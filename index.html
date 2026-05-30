@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frauenfußball Performance Dashboard</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Plotly JS for premium interactive charting -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    
+    <!-- Lucide Icons for clean modern iconography -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        :root {
+            --primary: #8b5cf6; /* Vibrant Purple/Violet */
+            --primary-hover: #7c3aed;
+            --primary-light: #f5f3ff;
+            --success: #ec4899; /* Vibrant Magenta/Rose */
+            --success-light: #fdf2f8;
+            --danger: #f43f5e; /* Vibrant Rose/Red */
+            --danger-light: #fff1f2;
+            --warning: #f59e0b; /* Vibrant Amber/Orange */
+            --warning-light: #fefbeb;
+            --dark: #0f172a;
+            --slate-700: #334155;
+            --slate-400: #94a3b8;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --bg-body: #f8fafc;
+            --font-main: 'Plus Jakarta Sans', sans-serif;
+            --font-title: 'Outfit', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-body);
+            color: var(--dark);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* Sidebar Styling */
+        aside {
+            width: 320px;
+            background-color: white;
+            border-right: 1px solid var(--slate-200);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--slate-200);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--success) 100%);
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .logo-text h1 {
+            font-family: var(--font-title);
+            font-size: 1.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--success) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 0.75rem;
+            color: var(--slate-400);
+            font-weight: 500;
+        }
+
+        .sidebar-scroll {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .sidebar-section h3 {
+            font-family: var(--font-title);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--slate-400);
+            margin-bottom: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Navigation Buttons */
+        .nav-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            list-style: none;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: left;
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--slate-700);
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            background-color: var(--slate-100);
+            color: var(--primary);
+        }
+
+        .nav-btn.active {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        /* Select Boxes */
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .filter-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--slate-700);
+        }
+
+        .custom-select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--slate-200);
+            border-radius: 10px;
+            background-color: var(--slate-100);
+            font-family: var(--font-main);
+            font-size: 0.85rem;
+            color: var(--dark);
+            font-weight: 500;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .custom-select:focus {
+            border-color: var(--primary);
+            background-color: white;
+        }
+
+        /* Multi Select custom container */
+        .multi-select-container {
+            border: 1px solid var(--slate-200);
+            border-radius: 10px;
+            background-color: var(--slate-100);
+            max-height: 140px;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .multi-select-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+            transition: background 0.15s ease;
+        }
+
+        .multi-select-item:hover {
+            background-color: var(--slate-200);
+        }
+
+        .multi-select-item input {
+            cursor: pointer;
+        }
+
+        /* Main Workspace Panel */
+        main {
+            flex-grow: 1;
+            height: 100%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-navbar {
+            height: 70px;
+            border-bottom: 1px solid var(--slate-200);
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            flex-shrink: 0;
+        }
+
+        .top-navbar h2 {
+            font-family: var(--font-title);
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--dark);
+        }
+
+        .content-area {
+            flex-grow: 1;
+            padding: 40px;
+            overflow-y: auto;
+        }
+
+        /* Onboarding File Drop Zone */
+        .onboarding-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+        }
+
+        .drop-zone {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border: 2px dashed var(--slate-200);
+            border-radius: 24px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background-color: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .drop-zone-icon {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 2rem;
+        }
+
+        .drop-zone h3 {
+            font-family: var(--font-title);
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .drop-zone p {
+            color: var(--slate-400);
+            font-size: 0.9rem;
+            margin-bottom: 24px;
+        }
+
+        .btn-upload {
+            background-color: var(--primary);
+            color: white;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 12px;
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn-upload:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* Dashboard Views */
+        .dashboard-view {
+            display: none;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .dashboard-view.active {
+            display: flex;
+        }
+
+        /* Reset Button */
+        .btn-reset {
+            background-color: var(--danger-light);
+            color: var(--danger);
+            border: 1px solid #fecaca;
+            width: 100%;
+            padding: 10px;
+            border-radius: 10px;
+            font-family: var(--font-main);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-reset:hover {
+            background-color: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        /* Metric Cards Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 24px;
+        }
+
+        .metric-card {
+            background: white;
+            border: 1px solid var(--slate-200);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+
+        .metric-card .label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--slate-400);
+            text-transform: uppercase;
+        }
+
+        .metric-card .value {
+            font-family: var(--font-title);
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--dark);
+        }
+
+        .metric-card .subtext {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--slate-700);
+        }
+
+        /* Dividers */
+        .divider {
+            height: 1px;
+            background-color: var(--slate-200);
+            width: 100%;
+        }
+
+        /* Table CSS */
+        .table-container {
+            background: white;
+            border: 1px solid var(--slate-200);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+            margin-top: 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--slate-100);
+            padding: 14px 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--slate-700);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--slate-200);
+        }
+
+        td {
+            padding: 14px 20px;
+            font-size: 0.85rem;
+            color: var(--dark);
+            border-bottom: 1px solid var(--slate-200);
+            font-weight: 500;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: var(--slate-100);
+        }
+
+        /* Dynamic Layout columns */
+        .columns-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+
+        @media (max-width: 1024px) {
+            .columns-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-box {
+            background: white;
+            border: 1px solid var(--slate-200);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+        }
+
+        .chart-box h3 {
+            font-family: var(--font-title);
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        /* ML Tabs styling */
+        .tabs-header {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--slate-200);
+            margin-bottom: 24px;
+        }
+
+        .tab-trigger {
+            background: none;
+            border: none;
+            padding: 12px 20px;
+            font-family: var(--font-main);
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--slate-400);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .tab-trigger:hover {
+            color: var(--primary);
+        }
+
+        .tab-trigger.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .ml-tab-content {
+            display: none;
+        }
+
+        .ml-tab-content.active {
+            display: block;
+        }
+
+        /* Form Badge Circles */
+        .form-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin-right: 6px;
+        }
+
+        .badge-win { background-color: var(--success); }
+        .badge-draw { background-color: var(--slate-400); }
+        .badge-loss { background-color: var(--danger); }
+
+        /* Prediction visual boxes */
+        .prediction-summary {
+            background-color: var(--primary-light);
+            border: 1px solid #ddd6fe;
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 24px 0;
+            text-align: center;
+        }
+
+        .prediction-score {
+            font-family: var(--font-title);
+            font-size: 2.6rem;
+            font-weight: 900;
+            color: var(--primary);
+        }
+
+        .prediction-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--slate-700);
+            text-transform: uppercase;
+        }
+
+        /* Upset alert */
+        .upset-alert {
+            background-color: var(--warning-light);
+            border: 1px solid #fde68a;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-top: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .upset-alert-icon {
+            color: var(--warning);
+            font-weight: bold;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .upset-alert-text h4 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #92400e;
+            margin-bottom: 2px;
+        }
+
+        .upset-alert-text p {
+            font-size: 0.8rem;
+            color: #b45309;
+        }
+
+        /* Progress probabilities */
+        .probability-bar-container {
+            width: 100%;
+            height: 28px;
+            background-color: var(--slate-200);
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: white;
+            text-align: center;
+            line-height: 28px;
+            margin: 16px 0;
+        }
+
+        /* Buttons styles */
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-family: var(--font-main);
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-block {
+            width: 100%;
+        }
+
+        /* Custom Drag Drop Zone styling inside sidebar */
+        .sidebar-uploader {
+            padding: 16px;
+            border: 2px dashed var(--slate-200);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-uploader:hover {
+            border-color: var(--primary);
+            background-color: var(--primary-light);
+        }
+
+        .sidebar-uploader p {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--slate-700);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <aside>
+        <div class="sidebar-header">
+            <div class="logo-container">
+                <div class="logo-icon">⚽</div>
+                <div class="logo-text">
+                    <h1>Frauenfußball</h1>
+                    <p>Performance Dashboard</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar-scroll">
+            <!-- 1. CSV Loader -->
+            <div class="sidebar-section" id="section-loader">
+                <h3><i data-lucide="upload"></i> Daten laden</h3>
+                <div class="sidebar-uploader" id="sidebar-upload-btn">
+                    <p>CSV-Datei anklicken</p>
+                    <span style="font-size: 0.65rem; color: var(--slate-400);">Lade sample_data.csv</span>
+                    <input type="file" id="sidebar-file-input" class="hidden" accept=".csv">
+                </div>
+                <button id="btn-reset" class="btn-reset hidden">
+                    <i data-lucide="refresh-cw"></i> Neue CSV laden
+                </button>
+            </div>
+            
+            <!-- 2. Navigation -->
+            <div class="sidebar-section hidden" id="section-nav">
+                <h3><i data-lucide="menu"></i> Navigation</h3>
+                <ul class="nav-list">
+                    <li>
+                        <button class="nav-btn active" data-page="Teams">
+                            <i data-lucide="users"></i> Übersicht
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-btn" data-page="Matches">
+                            <i data-lucide="calendar"></i> Spiele
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-btn" data-page="Stats">
+                            <i data-lucide="bar-chart-2"></i> Tabelle
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-btn" data-page="Machine Learning">
+                            <i data-lucide="cpu"></i> Machine Learning
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- 3. Global Filters -->
+            <div class="sidebar-section hidden" id="section-filters">
+                <h3><i data-lucide="sliders"></i> Globaler Filter</h3>
+                
+                <div class="filter-group">
+                    <label for="select-competition">Liga (competition)</label>
+                    <select id="select-competition" class="custom-select"></select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="select-season">Saison (season)</label>
+                    <select id="select-season" class="custom-select"></select>
+                </div>
+                
+                <div class="filter-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--slate-700); margin-bottom: 0;">Team(s) auswählen</label>
+                        <span id="btn-toggle-all-teams" style="font-size: 0.75rem; color: var(--primary); cursor: pointer; font-weight: 700; user-select: none;">Alle abwählen</span>
+                    </div>
+                    <div class="multi-select-container" id="multi-teams"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN PANEL -->
+    <main>
+        <div class="top-navbar">
+            <h2 id="top-nav-title">⚽ Frauenfußball Performance Dashboard</h2>
+        </div>
+        
+        <div class="content-area">
+            <!-- ONBOARDING PANEL (Shown when no CSV is loaded) -->
+            <div class="onboarding-container" id="view-onboarding">
+                <div class="drop-zone" id="onboarding-drop-zone">
+                    <div class="drop-zone-icon">
+                        <i data-lucide="file-spreadsheet"></i>
+                    </div>
+                    <h3>CSV-Leistungsdaten hochladen</h3>
+                    <p>Ziehe deine CSV-Datei per Drag-and-Drop hierher oder wähle sie manuell aus.</p>
+                    <button class="btn-upload">Datei auswählen</button>
+                    <input type="file" id="onboarding-file-input" class="hidden" accept=".csv">
+                </div>
+            </div>
+            
+            <!-- VIEW: TEAMS -->
+            <div class="dashboard-view" id="view-Teams">
+                <!-- Metrics -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="label">SPIELE GESAMT</span>
+                        <span class="value" id="kpi-total-matches">🏟️ 0</span>
+                        <span class="subtext">Absolvierte Partien</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="label">TORE GESAMT</span>
+                        <span class="value" id="kpi-total-goals">⚽ 0</span>
+                        <span class="subtext">Erzielte Gesamttore</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="label">Ø TORE PRO SPIEL</span>
+                        <span class="value" id="kpi-avg-goals">📈 0.00</span>
+                        <span class="subtext">Tore pro Spiel</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="label">MANNSCHAFTEN</span>
+                        <span class="value" id="kpi-num-teams">👥 0</span>
+                        <span class="subtext">Teilnehmende Mannschaften</span>
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <!-- Charts Row -->
+                <div class="columns-2">
+                    <div class="chart-box">
+                        <h3>📊 Team-Vergleich</h3>
+                        <div class="filter-group">
+                            <label for="select-bar-metric">Metrik für das Balkendiagramm</label>
+                            <select id="select-bar-metric" class="custom-select">
+                                <option value="goals_for">Tore erzielt</option>
+                                <option value="goals_against">Gegentore</option>
+                            </select>
+                        </div>
+                        <div id="chart-bar" style="height: 380px;"></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>📈 Leistungsverlauf nach Spieltag</h3>
+                        <div class="filter-group">
+                            <label for="select-line-team">Mannschaft auswählen</label>
+                            <select id="select-line-team" class="custom-select"></select>
+                        </div>
+                        <div id="chart-line" style="height: 380px;"></div>
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <!-- Data Preview -->
+                <div class="chart-box">
+                    <h3>📋 Datenübersicht</h3>
+                    
+                    <!-- Column Filters Row -->
+                    <div id="table-filters-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                        <div class="filter-group" style="margin-bottom:0;">
+                            <label for="search-col-team">Team</label>
+                            <select id="search-col-team" class="custom-select" style="background-color: white;"></select>
+                        </div>
+                        <div class="filter-group" style="margin-bottom:0;">
+                            <label for="search-col-opponent">Gegner</label>
+                            <select id="search-col-opponent" class="custom-select" style="background-color: white;"></select>
+                        </div>
+                        <div class="filter-group" style="margin-bottom:0;">
+                            <label for="search-col-goals-for">Tore</label>
+                            <select id="search-col-goals-for" class="custom-select" style="background-color: white;"></select>
+                        </div>
+                        <div class="filter-group" style="margin-bottom:0;">
+                            <label for="search-col-goals-against">Gegentore</label>
+                            <select id="search-col-goals-against" class="custom-select" style="background-color: white;"></select>
+                        </div>
+                        <div class="filter-group" style="margin-bottom:0;">
+                            <label for="search-col-matchday">Spieltag</label>
+                            <select id="search-col-matchday" class="custom-select" style="background-color: white;"></select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                        <table id="table-raw-data">
+                            <thead>
+                                <tr id="table-raw-headers"></tr>
+                            </thead>
+                            <tbody id="table-raw-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- VIEW: MATCHES -->
+            <div class="dashboard-view" id="view-Matches">
+                <div class="chart-box">
+                    <h3 style="margin-bottom: 16px;">🏟️ Spielergebnisse</h3>
+                    <div class="filter-group" style="max-width: 220px; margin-bottom: 20px;">
+                        <label for="select-matches-matchday">Spieltag filtern</label>
+                        <select id="select-matches-matchday" class="custom-select" style="background-color: white;"></select>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Spieltag</th>
+                                    <th>Heimteam</th>
+                                    <th style="text-align: center;">Ergebnis</th>
+                                    <th>Auswärtsteam</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-reconstructed-matches"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- VIEW: STATS -->
+            <div class="dashboard-view" id="view-Stats">
+                <div class="chart-box">
+                    <h3>🏆 Offizielle Tabelle (Standings)</h3>
+                    <p style="color: var(--slate-400); font-size: 0.85rem; margin-bottom: 20px;">Dynamisch berechnet nach den Standardregeln (Punkte ➔ Tordifferenz ➔ erzielte Tore).</p>
+                    <div class="filter-group" style="max-width: 220px; margin-bottom: 20px;">
+                        <label for="select-stats-matchday">Spieltag filtern</label>
+                        <select id="select-stats-matchday" class="custom-select" style="background-color: white;"></select>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Platz</th>
+                                    <th>Team</th>
+                                    <th>Spiele</th>
+                                    <th>S</th>
+                                    <th>U</th>
+                                    <th>N</th>
+                                    <th>Tore</th>
+                                    <th>Diff</th>
+                                    <th style="font-weight: 800; color: var(--primary);">Punkte</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-standings"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- VIEW: MACHINE LEARNING -->
+            <div class="dashboard-view" id="view-Machine-Learning">
+                <!-- Tabs Subnavigation -->
+                <div class="tabs-header">
+                    <button class="tab-trigger active" data-tab="ml-tab-prediction">🔮 Match-Vorhersage (Poisson)</button>
+                    <button class="tab-trigger" data-tab="ml-tab-elo">📈 Team-Elo & Stärke</button>
+                    <button class="tab-trigger" data-tab="ml-tab-simulation">📊 Simulationen & xPTS</button>
+                </div>
+                
+                <!-- TAB: MATCH PREDICTION -->
+                <div class="ml-tab-content active" id="ml-tab-prediction">
+                    <div class="chart-box">
+                        <h3>🔮 Match-Prediction Tool (Poisson)</h3>
+                        <p style="color: var(--slate-400); font-size: 0.85rem; margin-bottom: 24px;">Berechnet exakte Siegwahrscheinlichkeiten, Tore (xG) und Tipps basierend auf einer adjustierten Poisson-Verteilung.</p>
+                        
+                        <div class="columns-2" style="gap: 20px;">
+                            <div class="filter-group">
+                                <label for="select-pred-home">Heimteam auswählen</label>
+                                <select id="select-pred-home" class="custom-select"></select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="select-pred-away">Auswärtsteam auswählen</label>
+                                <select id="select-pred-away" class="custom-select"></select>
+                            </div>
+                        </div>
+                        
+                        <!-- Prediction result displays -->
+                        <div id="ml-prediction-output" class="hidden">
+                            <h4 style="font-family: var(--font-title); font-size: 1rem; font-weight: 700; margin: 24px 0 10px;">Ausgangs-Wahrscheinlichkeiten</h4>
+                            <div class="probability-bar-container">
+                                <div id="prob-bar-home" style="background-color: var(--primary);">0%</div>
+                                <div id="prob-bar-draw" style="background-color: var(--slate-400);">0%</div>
+                                <div id="prob-bar-away" style="background-color: var(--success);">0%</div>
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; color: var(--slate-700); margin-bottom: 24px;">
+                                <span id="label-prob-home">🏆 Sieg Heim</span>
+                                <span id="label-prob-draw">🤝 Unentschieden</span>
+                                <span id="label-prob-away">🚀 Sieg Auswärts</span>
+                            </div>
+                            
+                            <div class="prediction-summary">
+                                <div>
+                                    <div class="prediction-label">Erwartete Tore (Home xG)</div>
+                                    <div class="prediction-score" id="pred-xg-home" style="font-size: 1.8rem; font-weight: 700;">⚽ 0.00</div>
+                                </div>
+                                <div>
+                                    <div class="prediction-label" style="font-weight: 800; color: var(--success);">Score-Prediction</div>
+                                    <div class="prediction-score" id="pred-score-result">📊 2:1</div>
+                                </div>
+                                <div>
+                                    <div class="prediction-label">Erwartete Tore (Away xG)</div>
+                                    <div class="prediction-score" id="pred-xg-away" style="font-size: 1.8rem; font-weight: 700;">⚽ 0.00</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Upset alert -->
+                            <div class="upset-alert">
+                                <div class="upset-alert-icon">⚡</div>
+                                <div class="upset-alert-text">
+                                    <h4>Upset-Wahrscheinlichkeit (Überraschung)</h4>
+                                    <p id="pred-upset-prob">0.0% Risiko einer Überraschung (Draw oder Underdog-Sieg).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TAB: ELO RATING -->
+                <div class="ml-tab-content" id="ml-tab-elo">
+                    <div class="columns-2">
+                        <div class="chart-box">
+                            <h3>🏆 Aktuelle Elo-Stärken</h3>
+                            <p style="color: var(--slate-400); font-size: 0.8rem; margin-bottom: 16px;">Dynamisch über den Saisonverlauf fortgeschrieben (Basis: 1000).</p>
+                            <div class="table-container" style="max-height: 420px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Rang</th>
+                                            <th>Team</th>
+                                            <th>Elo-Rating</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-elo-standings"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="chart-box">
+                            <h3>📊 Elo-Entwicklungsvergleich</h3>
+                            <p style="color: var(--slate-400); font-size: 0.8rem; margin-bottom: 16px;">Wähle zwei Mannschaften aus, um ihre Elo-Kurven zu vergleichen.</p>
+                            
+                            <div class="filter-group">
+                                <label for="select-elo-t1">Team 1 auswählen</label>
+                                <select id="select-elo-t1" class="custom-select"></select>
+                            </div>
+                            <div class="filter-group" style="margin-bottom: 24px;">
+                                <label for="select-elo-t2">Team 2 auswählen</label>
+                                <select id="select-elo-t2" class="custom-select"></select>
+                            </div>
+                            
+                            <div id="chart-elo-history" style="height: 280px;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TAB: SIMULATION & XPTS -->
+                <div class="ml-tab-content" id="ml-tab-simulation">
+                    <div class="chart-box">
+                        <h3>📈 Team-Form & ML-Analyse</h3>
+                        
+                        <div class="filter-group" style="max-width: 320px; margin-bottom: 20px;">
+                            <label for="select-ml-detail-team">Mannschaft auswählen</label>
+                            <select id="select-ml-detail-team" class="custom-select"></select>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 32px;">
+                            <span style="font-weight: 700; font-size: 0.9rem; color: var(--slate-700);">Formkurve (Letzte 5 Spiele):</span>
+                            <div id="formkurve-badges"></div>
+                        </div>
+                        
+                        <div class="divider" style="margin-bottom: 32px;"></div>
+                        
+                        <h3>🏆 Expected Points (xPTS) Tabelle</h3>
+                        <p style="color: var(--slate-400); font-size: 0.8rem; margin-bottom: 16px;">Summiert die statistisch erwarteten Punkte über alle gespielten Matches und vergleicht diese mit den tatsächlichen Punkten.</p>
+                        <div class="table-container" style="margin-bottom: 32px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>xPTS Platz</th>
+                                        <th>Team</th>
+                                        <th>Spiele</th>
+                                        <th>Erwartete Punkte (xPTS)</th>
+                                        <th>Tatsächliche Punkte</th>
+                                        <th>Differenz</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-xpts"></tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="divider" style="margin-bottom: 32px;"></div>
+                        
+                        <h3>🎲 Monte-Carlo-Saisonsimulation</h3>
+                        <p style="color: var(--slate-400); font-size: 0.8rem; margin-bottom: 20px;">Führe 200 Simulationen des restlichen (oder vollständigen) Saisonverlaufs durch, um prozentuale Endplatzierungen zu prognostizieren.</p>
+                        
+                        <button id="btn-run-simulation" class="btn-primary" style="margin-bottom: 24px; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="play"></i> Monte-Carlo-Simulation starten (200 Durchläufe)
+                        </button>
+                        
+                        <div id="sim-results-container" class="hidden">
+                            <div class="upset-alert" style="background-color: var(--primary-light); border-color: #ddd6fe; color: #6d28d9; margin-bottom: 20px;">
+                                <div class="upset-alert-icon">ℹ️</div>
+                                <div class="upset-alert-text">
+                                    <h4 id="sim-status-title" style="color: #4c1d95;">Saisonvorhersage beendet</h4>
+                                    <p id="sim-status-desc" style="color: var(--primary);">Zeigt Wahrscheinlichkeiten berechnet aus gespielten Partien + 200 simulierten Restspielverläufen.</p>
+                                </div>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Sim. Platz</th>
+                                            <th>Team</th>
+                                            <th>Ø Punkte</th>
+                                            <th>Ø Platz</th>
+                                            <th style="color: var(--primary);">Meister %</th>
+                                            <th style="color: var(--success);">Top 3 %</th>
+                                            <th style="color: var(--danger);">Abstieg %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-simulation-results"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MAIN DASHBOARD ENGINE SCRIPT -->
+    <script src="script.js"></script>
+</body>
+</html>
