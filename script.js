@@ -1041,7 +1041,7 @@ function drawLineChart(teamData) {
         y: yWins,
         mode: 'lines+markers',
         name: 'Kumulierte Siege',
-        line: { color: '#ec4899', width: 3 }, // Rose (No Blue/Green)
+        line: { color: '#10b981', width: 3 }, // Premium Green
         marker: { size: 6 }
     };
     
@@ -1050,7 +1050,7 @@ function drawLineChart(teamData) {
         y: yLosses,
         mode: 'lines+markers',
         name: 'Kumulierte Niederlagen',
-        line: { color: '#8b5cf6', width: 3 }, // Purple (No Blue/Green)
+        line: { color: '#ef4444', width: 3 }, // Premium Red
         marker: { size: 6 }
     };
     
@@ -1095,8 +1095,8 @@ function renderRawDataTable(teamData) {
         <tr>
             <td style="font-weight:700;">${row.team}</td>
             <td>${row.opponent}</td>
-            <td style="font-weight:700; color:var(--primary);">${row.goals_for}</td>
-            <td style="color:var(--danger);">${row.goals_against}</td>
+            <td style="font-weight:700; color:var(--green-success);">${row.goals_for}</td>
+            <td style="font-weight:700; color:var(--red-danger);">${row.goals_against}</td>
             <td>${row.matchday}</td>
             <td style="font-size:0.75rem; color:var(--slate-400);">${row.season}</td>
             <td style="font-size:0.75rem; color:var(--slate-400);">${row.competition}</td>
@@ -1345,7 +1345,7 @@ function calculateExpectedPoints() {
             <td>${item.Spiele}</td>
             <td style="font-weight:800; color:var(--primary);">${item.xPTS.toFixed(1)}</td>
             <td style="font-weight:700;">${item.actual}</td>
-            <td style="font-weight:700; color:${item.diff >= 0 ? 'var(--success)' : 'var(--danger)'};">${item.diff >= 0 ? '+' : ''}${item.diff.toFixed(1)}</td>
+            <td style="font-weight:700; color:${item.diff >= 0 ? 'var(--green-success)' : 'var(--red-danger)'};">${item.diff >= 0 ? '+' : ''}${item.diff.toFixed(1)}</td>
         </tr>
     `).join('');
 }
@@ -1380,8 +1380,8 @@ if (btnSim) {
                     <td>${item.avgPoints.toFixed(1)}</td>
                     <td>${item.avgRank.toFixed(1)}</td>
                     <td style="font-weight:800; color:var(--primary);">${item.meister.toFixed(1)}%</td>
-                    <td style="font-weight:700; color:var(--success);">${item.top3.toFixed(1)}%</td>
-                    <td style="font-weight:700; color:var(--danger);">${item.abstieg.toFixed(1)}%</td>
+                    <td style="font-weight:700; color:var(--green-success);">${item.top3.toFixed(1)}%</td>
+                    <td style="font-weight:700; color:var(--red-danger);">${item.abstieg.toFixed(1)}%</td>
                 </tr>
             `).join('');
             
