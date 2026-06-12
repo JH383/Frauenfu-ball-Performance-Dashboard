@@ -53,6 +53,26 @@ if (dropZone) {
     });
 }
 
+function compareMatchdays(a, b) {
+    const aParsed = parseInt(a);
+    const bParsed = parseInt(b);
+    const aNum = !isNaN(aParsed);
+    const bNum = !isNaN(bParsed);
+    
+    if (aNum && bNum) {
+        return aParsed - bParsed;
+    }
+    if (aNum) return -1;
+    if (bNum) return 1;
+    
+    const order = { "Halbfinale": 1, "3. Platz": 2, "Finale": 3 };
+    const aOrder = order[a] || 99;
+    const bOrder = order[b] || 99;
+    
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return String(a).localeCompare(String(b));
+}
+
 // ----------------------------------------------------
 // FILE READING & PARSING
 // ----------------------------------------------------
@@ -152,7 +172,11 @@ function processUploadedData(rawData) {
 
             const comp = compKey ? row[compKey] : 'Frauen-Bundesliga';
             const season = seasonKey ? row[seasonKey] : '2023/2024';
-            const md = mdKey ? parseInt(row[mdKey]) || 1 : 1;
+            let md = 1;
+            if (mdKey && row[mdKey] !== undefined && row[mdKey] !== null && row[mdKey] !== '') {
+                const parsedMd = parseInt(row[mdKey]);
+                md = isNaN(parsedMd) ? row[mdKey] : parsedMd;
+            }
             const gh = ghKey ? parseInt(row[ghKey]) || 0 : 0;
             const ga = gaKey ? parseInt(row[gaKey]) || 0 : 0;
             const ph = phKey ? parseFloat(row[phKey]) || 50.0 : 50.0;
@@ -215,7 +239,8 @@ function processUploadedData(rawData) {
                 } else if (k === 'competition' || k === 'liga' || k === 'wettbewerb') {
                     normRow.competition = val;
                 } else if (k === 'spieltag' || k === 'matchday' || k === 'round' || k === 'runde') {
-                    normRow.matchday = parseInt(val) || 1;
+                    const parsedVal = parseInt(val);
+                    normRow.matchday = isNaN(parsedVal) ? val : parsedVal;
                 } else if (k === 'tore' || k === 'goals' || k === 'goals_scored' || k === 'goals scored' || k === 'tore erzielt') {
                     normRow.goals_for = parseInt(val) || 0;
                 } else if (k === 'gegentore' || k === 'conceded' || k === 'goals_conceded' || k === 'goals conceded' || k === 'tore kassiert') {
@@ -254,7 +279,7 @@ function reconstructMatchesFromTeamRecords(df) {
     const sorted = [...df].sort((a, b) => {
         if (a.competition !== b.competition) return a.competition.localeCompare(b.competition);
         if (a.season !== b.season) return b.season.localeCompare(a.season);
-        return a.matchday - b.matchday;
+        return compareMatchdays(a.matchday, b.matchday);
     });
     
     const matches = [];
@@ -438,7 +463,7 @@ function calculateEloHistory(matches) {
         eloHistory[t] = [[0, 1000.0]];
     });
     
-    const sortedMatches = [...matches].sort((a, b) => a.matchday - b.matchday);
+    const sortedMatches = [...matches].sort((a, b) => compareMatchdays(a.matchday, b.matchday));
     const K = 32;
     
     sortedMatches.forEach(m => {
@@ -513,7 +538,7 @@ function predictMatchPoisson(homeTeam, awayTeam, historicalMatches, currentElos)
         
         const sortedTeamMatches = historicalMatches.filter(m => 
             m.team_home === team || m.team_away === team
-        ).sort((a,b)=>b.matchday - a.matchday).slice(0,5);
+        ).sort((a,b)=>compareMatchdays(b.matchday, a.matchday)).slice(0,5);
         
         const pts = sortedTeamMatches.map(m => {
             const isHome = m.team_home === team;
@@ -822,6 +847,9 @@ function populateTableDropdown(selectId, key, label, data, currentValue) {
     // Get unique values for this key, sorted
     const values = Array.from(new Set(data.map(row => row[key])))
         .sort((a, b) => {
+            if (key === 'matchday') {
+                return compareMatchdays(a, b);
+            }
             if (typeof a === 'number' && typeof b === 'number') return a - b;
             return String(a).localeCompare(String(b), undefined, {numeric: true});
         });
@@ -878,30 +906,34 @@ function renderViews(teamData, selectedTeams, currentCompSeasonMatches) {
     const selGoalsAgainst = document.getElementById('search-col-goals-against')?.value || 'Alle';
     const selMatchday = document.getElementById('search-col-matchday')?.value || 'Alle';
     
-    // Populate dropdowns with current teamData values
-    populateTableDropdown('search-col-team', 'team', 'Teams', teamData, selTeam);
-    populateTableDropdown('search-col-opponent', 'opponent', 'Gegner', teamData, selOpponent);
-    populateTableDropdown('search-col-goals-for', 'goals_for', 'Tore', teamData, selGoalsFor);
-    populateTableDropdown('search-col-goals-against', 'goals_against', 'Gegentore', teamData, selGoalsAgainst);
-    populateTableDropdown('search-col-matchday', 'matchday', 'Spieltage', teamData, selMatchday);
+    // Filter matches list strictly by selected teams (either home or away)
+    const matchSubset = currentCompSeasonMatches.filter(m => 
+        selectedTeams.includes(m.team_home) || selectedTeams.includes(m.team_away)
+    );
+    
+    // Populate dropdowns with current matchSubset values
+    populateTableDropdown('search-col-team', 'team_home', 'Heimteam', matchSubset, selTeam);
+    populateTableDropdown('search-col-opponent', 'team_away', 'Gastteam', matchSubset, selOpponent);
+    populateTableDropdown('search-col-goals-for', 'goals_home', 'Tore Heim', matchSubset, selGoalsFor);
+    populateTableDropdown('search-col-goals-against', 'goals_away', 'Tore Gast', matchSubset, selGoalsAgainst);
+    populateTableDropdown('search-col-matchday', 'matchday', 'Spieltage', matchSubset, selMatchday);
     
     // Data Table with Column-specific dropdown filters
-    renderRawDataTable(teamData);
+    renderRawDataTable(matchSubset);
     
     // Bind table dropdown filter change events
     ['search-col-team', 'search-col-opponent', 'search-col-goals-for', 'search-col-goals-against', 'search-col-matchday'].forEach(id => {
         const input = document.getElementById(id);
         if (input) {
-            input.onchange = () => renderRawDataTable(teamData);
+            input.onchange = () => renderRawDataTable(matchSubset);
         }
     });
-    
     // Populate Matches Page Matchday Filter Dropdown
     const matchesMatchdaySelect = document.getElementById('select-matches-matchday');
     if (matchesMatchdaySelect) {
         const selMatchesMatchday = matchesMatchdaySelect.value || 'Alle';
         const uniqueMatchdays = Array.from(new Set(currentCompSeasonMatches.map(m => m.matchday)))
-            .sort((a, b) => a - b);
+            .sort(compareMatchdays);
             
         let selectHtml = `<option value="Alle">Alle Spieltage</option>`;
         uniqueMatchdays.forEach(md => {
@@ -933,7 +965,7 @@ function renderViews(teamData, selectedTeams, currentCompSeasonMatches) {
     if (statsMatchdaySelect) {
         const selStatsMatchday = statsMatchdaySelect.value || 'Alle';
         const uniqueMatchdays = Array.from(new Set(currentCompSeasonMatches.map(m => m.matchday)))
-            .sort((a, b) => a - b);
+            .sort(compareMatchdays);
             
         let selectHtml = `<option value="Alle">Alle Spieltage</option>`;
         uniqueMatchdays.forEach(md => {
@@ -947,8 +979,11 @@ function renderViews(teamData, selectedTeams, currentCompSeasonMatches) {
     const activeStatsMatchday = document.getElementById('select-stats-matchday')?.value || 'Alle';
     let standingsMatches = currentCompSeasonMatches;
     if (activeStatsMatchday !== 'Alle') {
-        const limit = parseInt(activeStatsMatchday);
-        standingsMatches = currentCompSeasonMatches.filter(m => m.matchday <= limit);
+        let parsedActive = parseInt(activeStatsMatchday);
+        if (isNaN(parsedActive)) {
+            parsedActive = activeStatsMatchday;
+        }
+        standingsMatches = currentCompSeasonMatches.filter(m => compareMatchdays(m.matchday, parsedActive) <= 0);
     }
     
     // Standings league table (filtered up to the active Stats Spieltag dropdown limit)
@@ -1072,31 +1107,31 @@ function drawLineChart(teamData) {
     Plotly.newPlot('chart-line', [traceWins, traceLosses], layout, {responsive: true, displayModeBar: false});
 }
 
-function renderRawDataTable(teamData) {
+function renderRawDataTable(matchesData) {
     const qTeam = document.getElementById('search-col-team').value;
     const qOpponent = document.getElementById('search-col-opponent').value;
     const qGoalsFor = document.getElementById('search-col-goals-for').value;
     const qGoalsAgainst = document.getElementById('search-col-goals-against').value;
     const qMatchday = document.getElementById('search-col-matchday').value;
     
-    const filtered = teamData.filter(row => {
-        if (qTeam && qTeam !== 'Alle' && String(row.team) !== qTeam) return false;
-        if (qOpponent && qOpponent !== 'Alle' && String(row.opponent) !== qOpponent) return false;
-        if (qGoalsFor && qGoalsFor !== 'Alle' && String(row.goals_for) !== qGoalsFor) return false;
-        if (qGoalsAgainst && qGoalsAgainst !== 'Alle' && String(row.goals_against) !== qGoalsAgainst) return false;
+    const filtered = matchesData.filter(row => {
+        if (qTeam && qTeam !== 'Alle' && String(row.team_home) !== qTeam) return false;
+        if (qOpponent && qOpponent !== 'Alle' && String(row.team_away) !== qOpponent) return false;
+        if (qGoalsFor && qGoalsFor !== 'Alle' && String(row.goals_home) !== qGoalsFor) return false;
+        if (qGoalsAgainst && qGoalsAgainst !== 'Alle' && String(row.goals_away) !== qGoalsAgainst) return false;
         if (qMatchday && qMatchday !== 'Alle' && String(row.matchday) !== qMatchday) return false;
         return true;
     });
     
-    const displayHeaders = ['Team', 'Gegner', 'Tore', 'Gegentore', 'Spieltag', 'Saison', 'Liga'];
+    const displayHeaders = ['Heimteam', 'Gastteam', 'Tore Heim', 'Tore Gast', 'Spieltag', 'Saison', 'Liga'];
     document.getElementById('table-raw-headers').innerHTML = displayHeaders.map(h => `<th>${h}</th>`).join('');
     
     document.getElementById('table-raw-body').innerHTML = filtered.map(row => `
         <tr>
-            <td style="font-weight:700;">${row.team}</td>
-            <td>${row.opponent}</td>
-            <td style="font-weight:700; color:var(--green-success);">${row.goals_for}</td>
-            <td style="font-weight:700; color:var(--red-danger);">${row.goals_against}</td>
+            <td style="font-weight:700;">${row.team_home}</td>
+            <td>${row.team_away}</td>
+            <td style="font-weight:700; color:var(--green-success);">${row.goals_home}</td>
+            <td style="font-weight:700; color:var(--red-danger);">${row.goals_away}</td>
             <td>${row.matchday}</td>
             <td style="font-size:0.75rem; color:var(--slate-400);">${row.season}</td>
             <td style="font-size:0.75rem; color:var(--slate-400);">${row.competition}</td>
@@ -1286,7 +1321,7 @@ function renderDetailAnalyses() {
     
     const last5 = CURRENT_ML_MATCHES.filter(m => 
         m.team_home === t || m.team_away === t
-    ).sort((a,b)=>b.matchday - a.matchday).slice(0,5);
+    ).sort((a,b)=>compareMatchdays(b.matchday, a.matchday)).slice(0,5);
     
     const badgesHTML = last5.map(m => {
         const isHome = m.team_home === t;
